@@ -48,7 +48,7 @@ FILE_LIST_NAME = 'ImagePopIndex.txt'
 OPERATION_LIST_NAME = 'ImagePopOperations.txt'
 HISTORY_TABLE_NAME = 'ImagePopHistory.csv'
 
-EXTERNAL_SOURCES = 'ImagePopLibOld.py' #None #myImagePopLib.py;lib2.py;etc.py 
+EXTERNAL_SOURCES = 'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
 #Must Each Expose Dict Called: Functions, or be None
 
 WAIT_INTERVAL = 300 #seconds #Int Only!
@@ -385,6 +385,10 @@ def run(target_directory, *args):
 	LOCK_DIRECTORY(target_directory)
 	try:
 		parsed_args, unparsed_args = try_to_parse_args(args) 
+		if len(parsed_args):
+			PRINT_ERR('Run understood: '+','.join(parsed_args))
+		if len(unparsed_args):
+			PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
 		#Catches args in config.EXTERNAL_SOURCES
 		
 		#TODO

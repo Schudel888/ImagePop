@@ -1,5 +1,5 @@
 #<BEGIN: Constants>
-VERSION = 0.01
+VERSION = 'Alpha'
 README_FILENAME = 'ImagePopReadme.txt'
 INIT_FILENAME = 'ImagePopInit.txt'
 
@@ -45,15 +45,18 @@ import os
 
 #<BEGIN: Error Handling>
 with open(README_FILENAME, 'w') as readme:
+	#Ensures there is always an up-to-date readme available in the runtime directory
 	readme.write(README)
 	readme.flush()
-	readme.truncate() #Truncates to current location #TODO?
+	readme.truncate()
 	
 def help_display(x=None):
-	print 'ImagePop.py: help_display()' #TODO
-	print README #TODO
-	#print "IMAGE_POP.PY USAGE: \npython image_pop.py [flags] [functions]"
-	#print "example_user@input_directory:python image_pop.py -i input_directory -o output_directory g1 g2 so1 so2"
+	print '<ImagePop.py help_display Function>' #TODO
+	#print README #TODO
+	print "<python ImagePop.py [mode] target_directory [args]>"
+	#TODO
+	if x is not None:
+		print repr(x)
 	sys.exit(1) #Safe Helpful Exit
 
 def check(xbool):
@@ -72,24 +75,29 @@ def is_initialized(target_directory):
 	try:
 		if isinstance(target_directory, str) and isinstance(INIT_FILENAME, str):
 			init_path = os.path.join(target_directory, INIT_FILENAME)
-			if os.path.is_file(init_path):
+			if os.path.isfile(init_path):
+				return True
+				'''
 				with open(init_path, 'r') as init_path_open:
 					#TODO End of line char ??
-					return float(init_path_open.readline()) == VERSION
+					return init_path_open.read(len(VERSION)) == VERSION
+				'''
 	except Exception:
 		return False
+	finally:
+		pass
 	return False
 
 def our_init(target_directory, x=DEFAULT_INIT_ARGS):
 	if not is_initialized(target_directory):
 		init_path = os.path.join(target_directory, INIT_FILENAME)
 		with open(init_path, 'w') as init_path_open:
-			init_path_open.write(str(VERSION))
+			init_path_open.write(VERSION)
 			init_path_open.flush()
 			init_path_open.truncate()
 
 	check(is_initialized(target_directory))
-	print 'Initialization of', target_directoy, 'is complete!'
+	print 'Initialization of', target_directory, 'is complete!'
 #<END: Initialization>
 
 
@@ -101,7 +109,7 @@ def our_run(target, x=DEFAULT_RUN_ARGS):
 		import ImagePopLib as lib
 	except Exception:
 		#TODO Generate ImagePopLib.py 
-		help_display()
+		help_display('ImagePopLib.py not imported properly!')
 
 	if not is_initialized(target):
 		#TODO ask user about this?
@@ -131,10 +139,6 @@ modes['-help'] = help_display
 modes['--help'] = help_display
 
 check(sys.argv[1] in modes)
-'''
-our_args = []
-if len(sys.argv) > 2:
-'''
 our_args = sys.argv[2:]	
 
 def designate_target(x):
@@ -155,18 +159,21 @@ def designate_target(x):
 		else:
 			return False
 
+	target= None
 	target_args = ['i', '-i', '--i', 'input', '-input', '--input']
-	target = None
 	x.reverse()
+	if len(x):
+		target = x.pop()
 	y = list()
 
 	while len(x):
 		a = x.pop()
 		if a in target_args:
+			old_target = target
 			try:
 				target = x.pop()
 			except Exception:
-				target = None
+				target = old_target
 		else:
 			y.append(a)
 	x = y

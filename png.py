@@ -4,5 +4,5 @@ def png(filename, output=None):
 	pass
 
 
-function = dict()
-function['png'] = png
+Functions = dict()
+Functions['png'] = png
