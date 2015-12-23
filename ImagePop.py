@@ -26,10 +26,10 @@ UserLib1.py;UserLib2.py;etc.py (Can be linked via EXTERNAL_SOURCES in ImagePopCo
 '''+README_FILENAME+''' (Will be generated into runtime directory)
 ImagePopIndex.txt (Ordered File List generated into target directory)
 ImagePopOperations.txt (Ordered Command List generated into target directory)
-ImagePopTable.npy (Table of Time Stamps generated into target directory)
+ImagePopHistory.csv (Table of Time Stamps generated into target directory)
 
 #Executables
-impop (#TODO aliasing)
+impop (#TODO alias) ==> python ImagePop.py
 
 #Credits
 Sol & Lowell

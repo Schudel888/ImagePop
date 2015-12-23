@@ -6,7 +6,6 @@ import os
 import time
 import imp
 import csv
-import numpy as np
 #<END: Imports>
 
 
@@ -22,7 +21,7 @@ def hard_check(boolean, extra=None):
 	return boolean	#Can't return anything but True
 
 def check(boolean, extra=None):
-        if not boolean: 
+	if not boolean: 
 		PRINT_ERR(extra)
 	return boolean #Gentle
 
@@ -42,13 +41,14 @@ def is_directory(x):
 SOURCES = dict()
 
 def DEMO(input_filepath, output_filepath, *args):
-	with open(input_filepath, 'w') as temp:
-		temp.write()
+	with open(output_filepath, 'w') as temp:
+		input_stat = os.stat(input_filepath)
+		temp.writelines(map(str, input_stat))
 		temp.flush()
 		temp.truncate()	
+SOURCES['demo']=DEMO
 
-
-
+#TODO
 #<END: Default Lib>
 
 
@@ -68,7 +68,7 @@ HISTORY_TABLE_NAME = 'ImagePopHistory.csv'
 EXTERNAL_SOURCES = 'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
 #Must Each Expose Dict Called: Functions, or be None
 
-WAIT_INTERVAL = 300 #seconds #Int Only!
+WAIT_INTERVAL = 30 #seconds #Int Only!
 #Duration to wait before checking files
 
 STD_ERR = None #myImagePopErr.txt
@@ -142,8 +142,8 @@ def request_filepath(filepath, istype=None):
 BLANK_TEXT = [] #TODO
 def is_sealed_text(filepath):
 	if is_filename(filepath):
-        	with open(filepath, 'r') as temp:
-                	if config.SEAL == temp.read(len(config.SEAL)):
+		with open(filepath, 'r') as temp:
+			if config.SEAL == temp.read(len(config.SEAL)):
 				return True
 	return False
 
@@ -170,15 +170,36 @@ def read_sealed_text(filepath):
 		return temp.readlines() #TODO
 
 BLANK_TABLE = [[]] #TODO
-BLANK_TIME = '0'*len(time.ctime(time.time()))
+BLANK_TIME = '0'*len(time.ctime(time.time())) #24
 def is_sealed_table(filepath):
-	#return True
+	if is_sealed_text(filepath):
+		with open(filepath, 'rb') as csvfile:
+			#dialect = csv.Sniffer().sniff(csvfile.read(1024))
+			csvfile.seek(len(config.SEAL))
+			reader = csv.reader(csvfile)#, dialect)
+			row_len=None
+			for row in reader:
+				if row_len is None:
+					row_len = len(row)
+				elif len(row) != row_len:
+						return False
+				for element in row:
+					if len(BLANK_TIME) != len(element):
+						return False
+		return True
 	#TODO
 	return False
 
 def write_sealed_table(filepath, data=BLANK_TABLE):
 	#TODO
 	filepath = request_filepath(filepath, is_sealed_table)
+	with open(filepath, 'wb') as csvfile:
+		csvfile.write(config.SEAL)
+		writer = csv.writer(csvfile)
+		writer.writerows(data)
+		csvfile.flush()
+		csvfile.truncate()
+
 	#TODO
 	hard_check(is_sealed_table(filepath), 'failed to create sealed table: '+filepath)
 	return filepath
@@ -186,6 +207,17 @@ def write_sealed_table(filepath, data=BLANK_TABLE):
 def read_sealed_table(filepath):
 	if not check(is_sealed_table(filepath), 'filepath is not a sealed table: '+filepath):
 		return BLANK_TABLE
+
+	with open(filepath, 'rb') as csvfile:
+		#dialect = csv.Sniffer().sniff(csvfile.read(1024))
+		csvfile.seek(len(config.SEAL))
+		reader = csv.reader(csvfile)#, dialect)
+		table_out = []
+		for row in reader:
+			table_out.append(row)
+		if not len(table_out):
+			return BLANK_TABLE
+		return table_out
 	#TODO Return contents of table !!!!
 	
 #<END: File Manipulation>
@@ -195,29 +227,29 @@ def read_sealed_table(filepath):
 OVERRIDE_LOCK = False
 LOCK_WORD = 'Locked'
 def ISLOCKED_DIRECTORY(target_directory):
-        if not OVERRIDE_LOCK:
-                #TODO might be too hard of a test
-                return check(read_sealed_text(os.path.join(target_directory, config.LOCK))[0]==LOCK_WORD, 'Improper Lock File Found')
-        else:
-                return False
+		if not OVERRIDE_LOCK:
+				#TODO might be too hard of a test
+				return check(read_sealed_text(os.path.join(target_directory, config.LOCK))[0]==LOCK_WORD, 'Improper Lock File Found')
+		else:
+				return False
 
 def LOCK_DIRECTORY(target_directory):
-        if not ISLOCKED_DIRECTORY(target_directory):
-                print 'Locking:', target_directory
-                write_sealed_text(os.path.join(target_directory, config.LOCK), lines=[LOCK_WORD])
-        print 'Locked:', target_directory
+		if not ISLOCKED_DIRECTORY(target_directory):
+				print 'Locking:', target_directory
+				write_sealed_text(os.path.join(target_directory, config.LOCK), lines=[LOCK_WORD])
+		print 'Locked:', target_directory
 
 def UNLOCK_DIRECTORY(target_directory):
-        if ISLOCKED_DIRECTORY(target_directory):
-                print 'Unlocking', target_directory
-                try:
-                        os.remove(os.path.join(target_directory, config.LOCK))
-                except Exception:
-                        PRINT_ERR(target_directory+' not unlocked properly!')
-                        if not OVERRIDE_LOCK and not len(raw_input('Override locking procedures for this session? [yes]/no ')):
-                                OVERRIDE_LOCK=True
-                        hard_check(OVERRIDE_LOCK)
-        print 'Unlocked:', target_directory
+		if ISLOCKED_DIRECTORY(target_directory):
+				print 'Unlocking', target_directory
+				try:
+						os.remove(os.path.join(target_directory, config.LOCK))
+				except Exception:
+						PRINT_ERR(target_directory+' not unlocked properly!')
+						if not OVERRIDE_LOCK and not len(raw_input('Override locking procedures for this session? [yes]/no ')):
+								OVERRIDE_LOCK=True
+						hard_check(OVERRIDE_LOCK)
+		print 'Unlocked:', target_directory
 #<END: Locking>
 
 
@@ -240,7 +272,7 @@ def properly_indexed(target_directory):
 		hard_check(RECURSION_DEPTH < 5, 'properly_indexed recurred too much')
 		write_sealed_text(path0, lines=BLANK_TEXT)
 		write_sealed_text(path1, lines=BLANK_TEXT)
-		write_sealed_table(path2, lines=BLANK_TABLE)
+		write_sealed_table(path2, data=BLANK_TABLE)
 
 	are_sealed = (is_sealed_text(path0) and is_sealed_text(path1) and is_sealed_table(path2))
 	
@@ -262,7 +294,7 @@ def properly_indexed(target_directory):
 			remake_all()
 			return properly_indexed(target_directory)
 	
-        #TODO More Checks?
+		#TODO More Checks?
 	#TODO Add IGNORED Types of files? Config variable?
 
 	possible_targets = os.listdir(target_directory)
@@ -344,7 +376,7 @@ def session(target_directory, parsed_args, unparsed_pargs):
 	
 	write_sealed_text(targeted(INDEX_FILES[0]), lines=INDEX_VARS[0])
 	write_sealed_text(targeted(INDEX_FILES[1]), lines=INDEX_VARS[1])
-	write_sealed_table(targeted(INDEX_FILES[2]), lines=INDEX_VARS[2])
+	write_sealed_table(targeted(INDEX_FILES[2]), data=INDEX_VARS[2])
 	return
 
 def try_to_parse_args(*args):
