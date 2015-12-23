@@ -4,6 +4,8 @@
 import sys
 import os
 import time
+import imp
+import csv
 import numpy as np
 #<END: Imports>
 
@@ -35,6 +37,21 @@ def is_directory(x):
 
 #<END: Error Handling>
 
+
+#<BEGIN: Default Lib>
+SOURCES = dict()
+
+def DEMO(input_filepath, output_filepath, *args):
+	with open(input_filepath, 'w') as temp:
+		temp.write()
+		temp.flush()
+		temp.truncate()	
+
+
+
+#<END: Default Lib>
+
+
 #<BEGIN: Custom Config File>
 CONFIG_LITERAL = '''
 ##Human Modifiable Portion of ImagePop.py's Config File
@@ -42,7 +59,7 @@ CONFIG_LITERAL = '''
 
 LOCK = '.ImagePopLock'
 
-SEAL = '#Created by ImagePopLib.py... MODIFY AT YOUR OWN RISK!\n'
+SEAL = '#Created by ImagePopLib.py... MODIFY AT YOUR OWN RISK!'
 
 FILE_LIST_NAME = 'ImagePopIndex.txt'
 OPERATION_LIST_NAME = 'ImagePopOperations.txt'
@@ -60,9 +77,9 @@ STD_ERR = None #myImagePopErr.txt
 CLOBBER = True #False
 #Allows files of the same name to be silently overwritten
 
-##Robot Only Config File
-##DO NOT MODIFY
-ROBOT_FIRENDLY = True
+#Robot Only Config File
+#DO NOT MODIFY
+ROBOT_FRIENDLY = True
 
 '''
 try:
@@ -79,19 +96,21 @@ PRINT_ERR('ImagePopConfig.py imported successfully!')
 
 for x in [config.LOCK, config.SEAL, config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME]: 
 	hard_check(is_str(x), 'Config: Must be string')
-if not check(config.SEAL.endswith('\n'), 'Config: SEAL must end with \n'):
-	config.SEAL += '\n'
 if not check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOURCES) or all(map(is_filename, config.EXTERNAL_SOURCES.split(';'))), 'Config: External Source Reset b/c Invalid'):
 	if config.EXTERNAL_SOURCES is None:
 		config.EXTERNAL_SOURCES = []
 	elif ';' not in config.EXTERNAL_SOURCES:
-		import config.EXTERNAL_SOURCES.rstrip('.py') as cfg
+		#import config.EXTERNAL_SOURCES.rstrip('.py') as cfg
+		name = config.EXTERNAL_SOURCES.rstrip('.py')
+		cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
 		config.EXTERNAL_SOURCES = [cfg.Functions]
 	else:
 		temp = config.EXTERNAL_SOURCES
 		config.EXTERNAL_SOURCES = []
 		for temp_cfg in temp.split(';'):
-			import temp_cfg.rstrip('.py') as cfg
+			#import temp_cfg.rstrip('.py') as cfg
+			name = temp_cfg.rstrip('.py')
+			cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
 			config.EXTERNAL_SOURCES.append(cfg.Functions)
 else:
 	config.EXTERNAL_SOURCES = []
@@ -111,7 +130,7 @@ def request_filepath(filepath, istype=None):
 	hard_check(is_str(filepath), 'filepath must be string: '+filepath)
 	if not is_filename(filepath):
 		return filepath
-	elif config.CLOBBER and istype in not None and istype(filepath):
+	elif config.CLOBBER and istype is not None and istype(filepath):
 		return filepath
 	else:
 		temp = raw_input(filepath+' exists. [Enter] to overwrite, or type new filepath: ')
@@ -316,7 +335,7 @@ def session(target_directory, parsed_args, unparsed_pargs):
 				try:
 					arg_match(arg)(filename, output_filename)
 					INDEX_VARS[2][rownum][1+argnum]=time.strptime(time.ctime( os.stat(output_filename).st_mtime ))
-				except Exception e:
+				except Exception as e:
 					#TODO		
 					PRINT_ERR(e)
 				finally:
@@ -328,7 +347,7 @@ def session(target_directory, parsed_args, unparsed_pargs):
 	write_sealed_table(targeted(INDEX_FILES[2]), lines=INDEX_VARS[2])
 	return
 
-def try_to_parse_args(*args)
+def try_to_parse_args(*args):
 	parsed = []
 	unparsed = []
 	for arg in args:
@@ -400,7 +419,7 @@ def run(target_directory, *args):
 			sleep_timer()
 			#TODO
 
-	except Exception e:
+	except Exception as e:
 		#TODO
 		PRINT_ERR(e)
 	finally:
