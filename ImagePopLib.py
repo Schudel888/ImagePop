@@ -71,6 +71,9 @@ EXTERNAL_SOURCES = None #'png.py' #None #myImagePopLib.py;lib2.py;etc.py
 WAIT_INTERVAL = 10 #seconds #Int Only!
 #Duration to wait before checking files
 
+LEASH_LENGTH = 10*60*1 #seconds #Int Only!
+#Total amount of time the program is allowed to run before exiting
+
 STD_ERR = None #myImagePopErr.txt
 #Allows superusers to rerout messages to log files
 
@@ -116,8 +119,10 @@ if not check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOUR
 	config.EXTERNAL_SOURCES.append(SOURCES)
 else:
 	config.EXTERNAL_SOURCES = [SOURCES]
-if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 1), 'Config: Wait set to 1s minimum'):
-	config.WAIT_INTERVAL = 1
+if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 10), 'Config: Wait set to 10s minimum'):
+	config.WAIT_INTERVAL = 10
+if not check(isinstance(config.LEASH_LENGTH, int) and (24*60*60 > config.LEASH_LENGTH > 1*1*60), 'Config: Leash set within 24h max and 60s min'):
+	config.LEASH_LENGTH = 10*60
 hard_check(config.STD_ERR is None or is_filename(config.STD_ERR), 'Config: Invalid Error Log File') #TODO
 if not check(isinstance(config.CLOBBER, bool), 'Config: Clobber must be a boolean'):
 	config.CLOBBER = False
@@ -146,20 +151,23 @@ def is_sealed_text(filepath):
 	
 	if is_filename(filepath):
 		return True
-		with open(filepath, 'rb') as temp:
+		'''
+		with open(filepath, 'r') as temp:
 			if config.SEAL == temp.read(len(config.SEAL)):
 				return True
+		'''
 	return False
 
 def write_sealed_text(filepath, lines=BLANK_TEXT):
 	#Will Overwrite Files!
 	filepath = request_filepath(filepath, is_sealed_text)
-	with open(filepath, 'wb') as temp:
+	with open(filepath, 'w') as temp:
 		temp.write(config.SEAL)
 		if is_str(lines):
 			temp.write(lines)
 		elif isinstance(lines, list):
-			temp.writelines(filter(is_str, lines))
+			for line in lines: #filter(is_str, lines):
+				temp.write(line+'\n')
 		temp.flush()
 		temp.truncate()
 	hard_check(is_sealed_text(filepath), 'failed to create sealed text: '+filepath)
@@ -168,17 +176,20 @@ def write_sealed_text(filepath, lines=BLANK_TEXT):
 def read_sealed_text(filepath, length=None):
 	if not check(is_sealed_text(filepath), 'filepath is not a sealed text: '+filepath):
 		return BLANK_TEXT
-	with open(filepath, 'rb') as temp:
+	with open(filepath, 'r') as temp:
 		#if hard_check(config.SEAL == temp.read(len(config.SEAL)), 'Sealed file must begin with SEAL'):
 		temp.seek(len(config.SEAL), 0) #Advances the file pointer passed seal
-		if not isinstance(length, int):
-			return temp.readlines() #TODO
+		if not (isinstance(length, int) and length > 0):
+			return temp.read().splitlines()
 		else:
 			return temp.read(length)
 
 BLANK_TABLE = [[]] #TODO
 BLANK_TIME = '0'*len(time.ctime(time.time())) #24
 def is_sealed_table(filepath):
+	if is_filename(filepath):
+		return True
+	'''
 	if is_sealed_text(filepath):
 		return True
 		with open(filepath, 'rb') as csvfile:
@@ -195,6 +206,7 @@ def is_sealed_table(filepath):
 					if len(BLANK_TIME) != len(element):
 						return False
 		return True
+	'''
 	#TODO
 	return False
 
@@ -202,7 +214,7 @@ def write_sealed_table(filepath, data=BLANK_TABLE):
 	#TODO
 	filepath = request_filepath(filepath, is_sealed_table)
 	with open(filepath, 'wb') as csvfile:
-		csvfile.write(config.SEAL)
+		#csvfile.write(config.SEAL)
 		writer = csv.writer(csvfile)
 		writer.writerows(data)
 		csvfile.flush()
@@ -218,7 +230,7 @@ def read_sealed_table(filepath):
 
 	with open(filepath, 'rb') as csvfile:
 		#dialect = csv.Sniffer().sniff(csvfile.read(1024))
-		csvfile.seek(len(config.SEAL))
+		#csvfile.seek(len(config.SEAL))
 		reader = csv.reader(csvfile)#, dialect)
 		table_out = []
 		for row in reader:
@@ -275,7 +287,7 @@ def properly_indexed(target_directory):
 	path0 = targeted(INDEX_FILES[0])
 	path1 = targeted(INDEX_FILES[1])
 	path2 = targeted(INDEX_FILES[2])
-	print path0, path1, path2
+	#print path0, path1, path2
 
 	def remake_all():
 		#RECURSION_DEPTH += 1
@@ -284,10 +296,7 @@ def properly_indexed(target_directory):
 		write_sealed_text(path1, lines=BLANK_TEXT)
 		write_sealed_table(path2, data=BLANK_TABLE)
 
-	are_sealed = (is_sealed_text(path0) and is_sealed_text(path1) and is_sealed_table(path2))
-	#print are_sealed
-
-	if not are_sealed:
+	if not (is_sealed_text(path0) and is_sealed_text(path1) and is_sealed_table(path2)):
 		remake_all()	
 		return properly_indexed(target_directory)
 	
@@ -295,9 +304,7 @@ def properly_indexed(target_directory):
 	INDEX_VARS[1] = read_sealed_text(path1)
 	INDEX_VARS[2] = read_sealed_table(path2)
 	
-	are_empty = (INDEX_VARS[2]==BLANK_TABLE and INDEX_VARS[1]==BLANK_TEXT and INDEX_VARS[0]==BLANK_TEXT)
-	
-	if not are_empty:
+	if not (INDEX_VARS[2]==BLANK_TABLE and INDEX_VARS[1]==BLANK_TEXT and INDEX_VARS[0]==BLANK_TEXT):
 		len0 = len(INDEX_VARS[0])
 		len1 = len(INDEX_VARS[1])
 		size2 = len(INDEX_VARS[2])*len(INDEX_VARS[2][0]) #TODO DANGER
@@ -333,7 +340,7 @@ def arg_match(arg):
 			return ARG_CACHE[arg]
 	return None
 
-def session(target_directory, parsed_args, unparsed_pargs):
+def session(target_directory, parsed_args):
 	#string
 	#list of strings
 	#list of strings #TODO Don't worry about these for now
@@ -356,20 +363,25 @@ def session(target_directory, parsed_args, unparsed_pargs):
 				#Should mean it exists already #TODO
 				PRINT_ERR('Output directory not properly recognized: '+output_directory)
 
+	'''
+	print INDEX_VARS[0]
+	print INDEX_VARS[1]
+	print INDEX_VARS[2]
+	'''
 	#print 'Session: entering potential_targets'
+	BLANK_TIME_ROW = [BLANK_TIME]*len(INDEX_VARS[1])
 	for potential_target in potential_targets:
 		if (potential_target not in INDEX_VARS[0]) and is_filename(targeted(potential_target)): 
 			if INDEX_VARS[2]==BLANK_TABLE:
 				INDEX_VARS[2] = []
 			INDEX_VARS[0].append(potential_target)
-			new_row = [time.asctime(time.strptime(time.ctime( os.stat(targeted(potential_target)).st_mtime )))]
-			new_row.extend([BLANK_TIME]*len(INDEX_VARS[1]))
+			#new_row = [time.asctime(time.strptime(time.ctime( os.stat(targeted(potential_target)).st_mtime )))]
+			new_row = [time.ctime( os.stat(targeted(potential_target)).st_mtime )]
+			new_row.extend(BLANK_TIME_ROW)
 			INDEX_VARS[2].append(new_row)
 
 	#print 'Session: entering rownum'
-	#print INDEX_VARS[0]
-	#print INDEX_VARS[2]
-	for rownum,(filename, table_row) in enumerate(zip(INDEX_VARS[0],INDEX_VARS[2])):
+	for rownum,filename in enumerate(INDEX_VARS[0]):
 
 		if not is_filename(targeted(filename)):
 			#This means the input is gone	
@@ -379,38 +391,48 @@ def session(target_directory, parsed_args, unparsed_pargs):
 		#print 'Session: entering input_modified'
 		#First check the input timestamp. If it's been modified, invalidate all others	
 		input_modified = time.strptime(time.ctime( os.stat(targeted(filename)).st_mtime ))
-		#print table_row
-		if input_modified > time.strptime( table_row[0] ):
-			table_row[1:] = BLANK_TIME
-			table_row[0] = time.asctime(input_modified)
+		if input_modified > time.strptime( INDEX_VARS[2][rownum][0] ):
+			INDEX_VARS[2][rownum] = [time.asctime(input_modified)]
+			INDEX_VARS[2][rownum].extend(BLANK_TIME_ROW)
 
 		#Now check all output timestamps; if they are newer than the input or blank, queue them
-		for argnum,(arg, output_modified_old) in enumerate(zip(INDEX_VARS[1],table_row[1:])):
-			
+		for (argnum,arg) in enumerate(INDEX_VARS[1]):
+			output_modified_old = INDEX_VARS[2][rownum][1+argnum]
+
 			output_filename = os.path.join(target_directory, arg, filename)
 			if is_filename(output_filename):
 				output_modified = time.strptime(time.ctime( os.stat(output_filename).st_mtime ))
 			else:
 				output_modified = BLANK_TIME
 		
-			if (output_modified_old == BLANK_TIME) or (output_modified_old != output_modified) or (output_modified < input_modified):
-
+			if (output_modified_old == BLANK_TIME) or (time.strptime(output_modified_old) != output_modified) or (output_modified < input_modified):
+				print 'old',output_modified_old
+				print 'new',output_modified
+				print 'in',time.asctime(input_modified)
 				try:
 
 					#TODO HERE IS WHERE THE MEAT OF THE PROGRAM HAPPENS!
+					
+					arg_match(arg)(targeted(filename), output_filename)   #TODO-___________________________________________
+
+
+					INDEX_VARS[2][rownum][1+argnum]=time.ctime( os.stat(output_filename).st_mtime )
+
 					print 'Session:', arg, targeted(filename)
-					arg_match(arg)(targeted(filename), output_filename)
 
-
-
-					INDEX_VARS[2][rownum][1+argnum]=time.strptime(time.ctime( os.stat(output_filename).st_mtime ))
 				except Exception as e:
 					#TODO		
+					#PRINT_ERR('Session: '+arg+' '+targeted(filename))
 					PRINT_ERR(e)
 				finally:
 					pass
 					#SAVE FILES CAREFULLY
-	
+	'''
+	print INDEX_VARS[0]
+	print INDEX_VARS[1]
+	print INDEX_VARS[2]
+	#sys.exit(1)
+	'''
 	write_sealed_text(targeted(INDEX_FILES[0]), lines=INDEX_VARS[0])
 	write_sealed_text(targeted(INDEX_FILES[1]), lines=INDEX_VARS[1])
 	write_sealed_table(targeted(INDEX_FILES[2]), data=INDEX_VARS[2])
@@ -464,43 +486,37 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 
 #TODO Make it so the program has an overall LEASH
 LEASH_START = time.time()
-LEASH_LENGTH = 60*60*1 #1hour
 def leash_allows():
-	return time.time() < LEASH_START+LEASH_LENGTH
+	return time.time() < LEASH_START+config.LEASH_LENGTH
 	
 def run(target_directory, args):
 	hard_check(is_directory(target_directory), "Invalid Directory: "+target_directory)
 	LOCK_DIRECTORY(target_directory)
-	
-
-
-
-
-	#try:
-	parsed_args, unparsed_args = try_to_parse_args(args) 
-	if len(parsed_args):
-		PRINT_ERR('Run understood: '+','.join(parsed_args))
-	if len(unparsed_args):
-		PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
-	#Catches args in config.EXTERNAL_SOURCES
-	
-	#TODO
-	#Does work, then goes idle, then repeats, until LEASH
-	print "Entering main while loop"
-	while(leash_allows()):
-		#TODO
-		print 'Entering Session'
-		session(target_directory, parsed_args, unparsed_args)
-		#TODO
-		print 'Entering sleep timer()'
-		sleep_timer()
-		#TODO
 	try:
-			pass
+		parsed_args, unparsed_args = try_to_parse_args(args) 
+		if len(parsed_args):
+			PRINT_ERR('Run understood: '+','.join(parsed_args))
+		if len(unparsed_args):
+			PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
+		#Catches args in config.EXTERNAL_SOURCES
+		
+		#TODO
+		#Does work, then goes idle, then repeats, until LEASH
+		#print "Entering main while loop"
+		while(leash_allows()):
+			#TODO
+			#print 'Entering Session'
+			session(target_directory, parsed_args)
+			#TODO
+			#print 'Entering sleep timer()'
+			sleep_timer()
+			#TODO
+
+		#try:
+		#pass
 	except Exception as e:
 		#TODO
 		PRINT_ERR(e)
-		raise e
 	finally:
 		UNLOCK_DIRECTORY(target_directory)	
 		#TODO
