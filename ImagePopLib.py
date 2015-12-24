@@ -41,7 +41,7 @@ def is_directory(x):
 SOURCES = dict()
 
 def DEMO(input_filepath, output_filepath, *args):
-	with open(output_filepath, 'w') as temp:
+	with open(output_filepath, 'wb') as temp:
 		input_stat = os.stat(input_filepath)
 		temp.writelines(map(str, input_stat))
 		temp.flush()
@@ -65,10 +65,10 @@ FILE_LIST_NAME = 'ImagePopIndex.txt'
 OPERATION_LIST_NAME = 'ImagePopOperations.txt'
 HISTORY_TABLE_NAME = 'ImagePopHistory.csv'
 
-EXTERNAL_SOURCES = 'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
+EXTERNAL_SOURCES = None #'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
 #Must Each Expose Dict Called: Functions, or be None
 
-WAIT_INTERVAL = 30 #seconds #Int Only!
+WAIT_INTERVAL = 10 #seconds #Int Only!
 #Duration to wait before checking files
 
 STD_ERR = None #myImagePopErr.txt
@@ -96,6 +96,7 @@ PRINT_ERR('ImagePopConfig.py imported successfully!')
 
 for x in [config.LOCK, config.SEAL, config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME]: 
 	hard_check(is_str(x), 'Config: Must be string')
+
 if not check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOURCES) or all(map(is_filename, config.EXTERNAL_SOURCES.split(';'))), 'Config: External Source Reset b/c Invalid'):
 	if config.EXTERNAL_SOURCES is None:
 		config.EXTERNAL_SOURCES = []
@@ -112,10 +113,11 @@ if not check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOUR
 			name = temp_cfg.rstrip('.py')
 			cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
 			config.EXTERNAL_SOURCES.append(cfg.Functions)
+	config.EXTERNAL_SOURCES.append(SOURCES)
 else:
-	config.EXTERNAL_SOURCES = []
-if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 10), 'Config: Wait set to 10s minimum'):
-	config.WAIT_INTERVAL = 10
+	config.EXTERNAL_SOURCES = [SOURCES]
+if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 1), 'Config: Wait set to 1s minimum'):
+	config.WAIT_INTERVAL = 1
 hard_check(config.STD_ERR is None or is_filename(config.STD_ERR), 'Config: Invalid Error Log File') #TODO
 if not check(isinstance(config.CLOBBER, bool), 'Config: Clobber must be a boolean'):
 	config.CLOBBER = False
@@ -141,8 +143,10 @@ def request_filepath(filepath, istype=None):
 
 BLANK_TEXT = [] #TODO
 def is_sealed_text(filepath):
+	
 	if is_filename(filepath):
-		with open(filepath, 'r') as temp:
+		return True
+		with open(filepath, 'rb') as temp:
 			if config.SEAL == temp.read(len(config.SEAL)):
 				return True
 	return False
@@ -150,7 +154,7 @@ def is_sealed_text(filepath):
 def write_sealed_text(filepath, lines=BLANK_TEXT):
 	#Will Overwrite Files!
 	filepath = request_filepath(filepath, is_sealed_text)
-	with open(filepath, 'w') as temp:
+	with open(filepath, 'wb') as temp:
 		temp.write(config.SEAL)
 		if is_str(lines):
 			temp.write(lines)
@@ -161,18 +165,22 @@ def write_sealed_text(filepath, lines=BLANK_TEXT):
 	hard_check(is_sealed_text(filepath), 'failed to create sealed text: '+filepath)
 	return filepath 
 
-def read_sealed_text(filepath):
-	if not check(is_sealed_table(filepath), 'filepath is not a sealed text: '+filepath):
+def read_sealed_text(filepath, length=None):
+	if not check(is_sealed_text(filepath), 'filepath is not a sealed text: '+filepath):
 		return BLANK_TEXT
-	with open(filepath, 'r') as temp:
+	with open(filepath, 'rb') as temp:
 		#if hard_check(config.SEAL == temp.read(len(config.SEAL)), 'Sealed file must begin with SEAL'):
 		temp.seek(len(config.SEAL), 0) #Advances the file pointer passed seal
-		return temp.readlines() #TODO
+		if not isinstance(length, int):
+			return temp.readlines() #TODO
+		else:
+			return temp.read(length)
 
 BLANK_TABLE = [[]] #TODO
 BLANK_TIME = '0'*len(time.ctime(time.time())) #24
 def is_sealed_table(filepath):
 	if is_sealed_text(filepath):
+		return True
 		with open(filepath, 'rb') as csvfile:
 			#dialect = csv.Sniffer().sniff(csvfile.read(1024))
 			csvfile.seek(len(config.SEAL))
@@ -227,28 +235,28 @@ def read_sealed_table(filepath):
 OVERRIDE_LOCK = False
 LOCK_WORD = 'Locked'
 def ISLOCKED_DIRECTORY(target_directory):
-		if not OVERRIDE_LOCK:
-				#TODO might be too hard of a test
-				return check(read_sealed_text(os.path.join(target_directory, config.LOCK))[0]==LOCK_WORD, 'Improper Lock File Found')
-		else:
-				return False
+	if not OVERRIDE_LOCK and is_filename(os.path.join(target_directory, config.LOCK)):
+		#TODO might be too hard of a test
+		return check(read_sealed_text(os.path.join(target_directory, config.LOCK), len(LOCK_WORD))==LOCK_WORD, 'Improper Lock File Found')
+	else:
+		return False
 
 def LOCK_DIRECTORY(target_directory):
-		if not ISLOCKED_DIRECTORY(target_directory):
-				print 'Locking:', target_directory
-				write_sealed_text(os.path.join(target_directory, config.LOCK), lines=[LOCK_WORD])
-		print 'Locked:', target_directory
+	#if not ISLOCKED_DIRECTORY(target_directory):
+	print 'Locking:', target_directory
+	write_sealed_text(os.path.join(target_directory, config.LOCK), lines=LOCK_WORD)
+	print 'Locked:', target_directory
 
 def UNLOCK_DIRECTORY(target_directory):
-		if ISLOCKED_DIRECTORY(target_directory):
-				print 'Unlocking', target_directory
-				try:
-						os.remove(os.path.join(target_directory, config.LOCK))
-				except Exception:
-						PRINT_ERR(target_directory+' not unlocked properly!')
-						if not OVERRIDE_LOCK and not len(raw_input('Override locking procedures for this session? [yes]/no ')):
-								OVERRIDE_LOCK=True
-						hard_check(OVERRIDE_LOCK)
+	if ISLOCKED_DIRECTORY(target_directory):
+		print 'Unlocking', target_directory
+		try:
+			os.remove(os.path.join(target_directory, config.LOCK))
+		except Exception:
+			PRINT_ERR(target_directory+' not unlocked properly!')
+			if not OVERRIDE_LOCK and not len(raw_input('Override locking procedures for this session? [yes]/no ')):
+				OVERRIDE_LOCK=True
+			hard_check(OVERRIDE_LOCK, 'Lock must be overridden if it is not working properly...')
 		print 'Unlocked:', target_directory
 #<END: Locking>
 
@@ -256,26 +264,29 @@ def UNLOCK_DIRECTORY(target_directory):
 
 #<Begin: Runtime Main>
 
-INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME)
-INDEX_VARS = (BLANK_TEXT, BLANK_TEXT, BLANK_TABLE)
+INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME, config.LOCK, 'ImagePopInit.txt') #TODO
+INDEX_VARS = [BLANK_TEXT, BLANK_TEXT, BLANK_TABLE]
 
-RECURSION_DEPTH = 0
+#RECURSION_DEPTH = 0
 def properly_indexed(target_directory):
+	#global RECURSION_DEPTH
 	targeted = lambda x: os.path.join(target_directory, x)
 
 	path0 = targeted(INDEX_FILES[0])
 	path1 = targeted(INDEX_FILES[1])
 	path2 = targeted(INDEX_FILES[2])
+	print path0, path1, path2
 
 	def remake_all():
-		RECURSION_DEPTH += 1
-		hard_check(RECURSION_DEPTH < 5, 'properly_indexed recurred too much')
+		#RECURSION_DEPTH += 1
+		#hard_check(RECURSION_DEPTH < 5, 'properly_indexed recurred too much')
 		write_sealed_text(path0, lines=BLANK_TEXT)
 		write_sealed_text(path1, lines=BLANK_TEXT)
 		write_sealed_table(path2, data=BLANK_TABLE)
 
 	are_sealed = (is_sealed_text(path0) and is_sealed_text(path1) and is_sealed_table(path2))
-	
+	#print are_sealed
+
 	if not are_sealed:
 		remake_all()	
 		return properly_indexed(target_directory)
@@ -289,7 +300,7 @@ def properly_indexed(target_directory):
 	if not are_empty:
 		len0 = len(INDEX_VARS[0])
 		len1 = len(INDEX_VARS[1])
-		size2 = len(INDEX_VARS[2])*len(INDEX_VARS[2][0]) #TODO DANGER~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		size2 = len(INDEX_VARS[2])*len(INDEX_VARS[2][0]) #TODO DANGER
 		if len0*(len1+1) != size2:
 			remake_all()
 			return properly_indexed(target_directory)
@@ -305,11 +316,14 @@ def properly_indexed(target_directory):
 			remake_all()
 			return properly_indexed(target_directory)
 	
-	RECURSION_DEPTH = 0
+	#RECURSION_DEPTH = 0
 	return possible_targets #THIS IS EVERYTHING, even directories and weird stuff
 
 ARG_CACHE = dict()
 def arg_match(arg):
+	#print arg
+	#print config.EXTERNAL_SOURCES
+	#print ARG_CACHE
 	#Returns the library function for a given arg, or None
 	if arg in ARG_CACHE:
 		return ARG_CACHE[arg]
@@ -317,38 +331,55 @@ def arg_match(arg):
 		if arg in source:
 			ARG_CACHE[arg] = source[arg]
 			return ARG_CACHE[arg]
-	ARG_CACHE[arg]=None
-	return ARG_CACHE[arg]
+	return None
 
 def session(target_directory, parsed_args, unparsed_pargs):
 	#string
 	#list of strings
 	#list of strings #TODO Don't worry about these for now
-
 	targeted = lambda x: os.path.join(target_directory, x)
 
+	#print 'Session: entering properly_indexed'
 	#CHECKS FOR SAVED INDEX FILES AND RETURNS A LIST OF ONLY POTENTIAL TARGET FILES
+	assert is_directory(target_directory)
 	potential_targets = properly_indexed(target_directory) #This function is recursive!! DANGEROUS!!
 	
-	#TODO______________________________________________________________________________________________
+	#TODO
+	#print 'Session: entering parsed_args'
 	INDEX_VARS[1] = parsed_args
-	
+	for arg in INDEX_VARS[1]:
+		output_directory = targeted(arg)
+		if not is_directory(output_directory):
+			try:
+				os.mkdir(output_directory)
+			except OSError:
+				#Should mean it exists already #TODO
+				PRINT_ERR('Output directory not properly recognized: '+output_directory)
+
+	#print 'Session: entering potential_targets'
 	for potential_target in potential_targets:
-		if (potential_target not in INDEX_VARS[0]) and is_filepath(targeted(potential_target)): 
+		if (potential_target not in INDEX_VARS[0]) and is_filename(targeted(potential_target)): 
+			if INDEX_VARS[2]==BLANK_TABLE:
+				INDEX_VARS[2] = []
 			INDEX_VARS[0].append(potential_target)
 			new_row = [time.asctime(time.strptime(time.ctime( os.stat(targeted(potential_target)).st_mtime )))]
 			new_row.extend([BLANK_TIME]*len(INDEX_VARS[1]))
 			INDEX_VARS[2].append(new_row)
 
+	#print 'Session: entering rownum'
+	#print INDEX_VARS[0]
+	#print INDEX_VARS[2]
 	for rownum,(filename, table_row) in enumerate(zip(INDEX_VARS[0],INDEX_VARS[2])):
 
-		if not is_filepath(targeted(filename)):
+		if not is_filename(targeted(filename)):
 			#This means the input is gone	
 			#TODO but can be ignored	
 			continue
 
+		#print 'Session: entering input_modified'
 		#First check the input timestamp. If it's been modified, invalidate all others	
 		input_modified = time.strptime(time.ctime( os.stat(targeted(filename)).st_mtime ))
+		#print table_row
 		if input_modified > time.strptime( table_row[0] ):
 			table_row[1:] = BLANK_TIME
 			table_row[0] = time.asctime(input_modified)
@@ -357,7 +388,7 @@ def session(target_directory, parsed_args, unparsed_pargs):
 		for argnum,(arg, output_modified_old) in enumerate(zip(INDEX_VARS[1],table_row[1:])):
 			
 			output_filename = os.path.join(target_directory, arg, filename)
-			if is_filepath(output_filename):
+			if is_filename(output_filename):
 				output_modified = time.strptime(time.ctime( os.stat(output_filename).st_mtime ))
 			else:
 				output_modified = BLANK_TIME
@@ -365,7 +396,15 @@ def session(target_directory, parsed_args, unparsed_pargs):
 			if (output_modified_old == BLANK_TIME) or (output_modified_old != output_modified) or (output_modified < input_modified):
 
 				try:
+
+					#TODO HERE IS WHERE THE MEAT OF THE PROGRAM HAPPENS!
+					print 'Session:', arg, filename
 					arg_match(arg)(filename, output_filename)
+
+
+
+
+
 					INDEX_VARS[2][rownum][1+argnum]=time.strptime(time.ctime( os.stat(output_filename).st_mtime ))
 				except Exception as e:
 					#TODO		
@@ -379,7 +418,7 @@ def session(target_directory, parsed_args, unparsed_pargs):
 	write_sealed_table(targeted(INDEX_FILES[2]), data=INDEX_VARS[2])
 	return
 
-def try_to_parse_args(*args):
+def try_to_parse_args(args):
 	parsed = []
 	unparsed = []
 	for arg in args:
@@ -396,7 +435,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 		sleep_time = config.WAIT_INTERVAL
 	end = start+sleep_time
 	end_message = 'Program will resume automatically after: '+time.asctime(end)
-	print end_messag
+	print end_message
 
 	subinterval = float(subinterval)
 	if not check(sleep_time > subinterval > 0.0, 'sleep_timer subinterval must be small and positive'):
@@ -431,29 +470,39 @@ LEASH_LENGTH = 60*60*1 #1hour
 def leash_allows():
 	return time.time() < LEASH_START+LEASH_LENGTH
 	
-def run(target_directory, *args):
+def run(target_directory, args):
 	hard_check(is_directory(target_directory), "Invalid Directory: "+target_directory)
 	LOCK_DIRECTORY(target_directory)
-	try:
-		parsed_args, unparsed_args = try_to_parse_args(args) 
-		if len(parsed_args):
-			PRINT_ERR('Run understood: '+','.join(parsed_args))
-		if len(unparsed_args):
-			PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
-		#Catches args in config.EXTERNAL_SOURCES
-		
-		#TODO
-		#Does work, then goes idle, then repeats, until LEASH
-		while(leash_allows()):
-			#TODO
-			session(target_directory, parsed_args, unparsed_args)
-			#TODO
-			sleep_timer()
-			#TODO
+	
 
+
+
+
+	#try:
+	parsed_args, unparsed_args = try_to_parse_args(args) 
+	if len(parsed_args):
+		PRINT_ERR('Run understood: '+','.join(parsed_args))
+	if len(unparsed_args):
+		PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
+	#Catches args in config.EXTERNAL_SOURCES
+	
+	#TODO
+	#Does work, then goes idle, then repeats, until LEASH
+	print "Entering main while loop"
+	while(leash_allows()):
+		#TODO
+		print 'Entering Session'
+		session(target_directory, parsed_args, unparsed_args)
+		#TODO
+		print 'Entering sleep timer()'
+		sleep_timer()
+		#TODO
+	try:
+			pass
 	except Exception as e:
 		#TODO
 		PRINT_ERR(e)
+		raise e
 	finally:
 		UNLOCK_DIRECTORY(target_directory)	
 		#TODO
