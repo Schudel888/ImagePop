@@ -65,7 +65,7 @@ FILE_LIST_NAME = 'ImagePopIndex.txt'
 OPERATION_LIST_NAME = 'ImagePopOperations.txt'
 HISTORY_TABLE_NAME = 'ImagePopHistory.csv'
 
-EXTERNAL_SOURCES = None #'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
+EXTERNAL_SOURCES = 'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
 #Must Each Expose Dict Called: Functions, or be None
 
 WAIT_INTERVAL = 10 #seconds #Int Only!
@@ -100,25 +100,31 @@ PRINT_ERR('ImagePopConfig.py imported successfully!')
 for x in [config.LOCK, config.SEAL, config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME]: 
 	hard_check(is_str(x), 'Config: Must be string')
 
-if not check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOURCES) or all(map(is_filename, config.EXTERNAL_SOURCES.split(';'))), 'Config: External Source Reset b/c Invalid'):
-	if config.EXTERNAL_SOURCES is None:
-		config.EXTERNAL_SOURCES = []
-	elif ';' not in config.EXTERNAL_SOURCES:
-		#import config.EXTERNAL_SOURCES.rstrip('.py') as cfg
-		name = config.EXTERNAL_SOURCES.rstrip('.py')
-		cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
-		config.EXTERNAL_SOURCES = [cfg.Functions]
-	else:
-		temp = config.EXTERNAL_SOURCES
-		config.EXTERNAL_SOURCES = []
-		for temp_cfg in temp.split(';'):
-			#import temp_cfg.rstrip('.py') as cfg
-			name = temp_cfg.rstrip('.py')
+try:
+	temp_sources = []
+	if check(config.EXTERNAL_SOURCES is None or is_filename(config.EXTERNAL_SOURCES) or all(map(is_filename, config.EXTERNAL_SOURCES.split(';'))), 'Config: External Source Reset b/c Invalid'):
+		if config.EXTERNAL_SOURCES is None:
+			#config.EXTERNAL_SOURCES = []
+			pass
+		elif is_str(config.EXTERNAL_SOURCES) and ';' not in config.EXTERNAL_SOURCES:
+			#import config.EXTERNAL_SOURCES.rstrip('.py') as cfg
+			name = config.EXTERNAL_SOURCES.rstrip('.py')
 			cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
-			config.EXTERNAL_SOURCES.append(cfg.Functions)
-	config.EXTERNAL_SOURCES.append(SOURCES)
-else:
-	config.EXTERNAL_SOURCES = [SOURCES]
+			temp_sources.append(cfg.Functions)
+		else:
+			#temp = config.EXTERNAL_SOURCES
+			#config.EXTERNAL_SOURCES = []
+			for temp_cfg in temp.split(';'):
+				#import temp_cfg.rstrip('.py') as cfg
+				name = temp_cfg.rstrip('.py')
+				cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????
+				temp_sources.append(cfg.Functions)
+except Exception:
+	pass
+finally:
+	temp_sources.append(SOURCES)
+	config.EXTERNAL_SOURCES = temp_sources
+
 if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 10), 'Config: Wait set to 10s minimum'):
 	config.WAIT_INTERVAL = 10
 if not check(isinstance(config.LEASH_LENGTH, int) and (24*60*60 > config.LEASH_LENGTH > 1*1*60), 'Config: Leash set within 24h max and 60s min'):
@@ -352,8 +358,14 @@ def session(target_directory, parsed_args):
 	potential_targets = properly_indexed(target_directory) #This function is recursive!! DANGEROUS!!
 	
 	#TODO
-	#print 'Session: entering parsed_args'
 	INDEX_VARS[1] = parsed_args
+	old_parsed_args = read_sealed_text(targeted(INDEX_FILES[1]))
+	if old_parsed_args != INDEX_VARS[1]:
+		for row in INDEX_VARS[2]:
+			#TODO~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~ ~ ~ ~  ~ ~  ~~~  ~~ ~  ~
+			pass
+
+	
 	for arg in INDEX_VARS[1]:
 		output_directory = targeted(arg)
 		if not is_directory(output_directory):
@@ -363,13 +375,9 @@ def session(target_directory, parsed_args):
 				#Should mean it exists already #TODO
 				PRINT_ERR('Output directory not properly recognized: '+output_directory)
 
-	'''
-	print INDEX_VARS[0]
-	print INDEX_VARS[1]
-	print INDEX_VARS[2]
-	'''
 	#print 'Session: entering potential_targets'
 	BLANK_TIME_ROW = [BLANK_TIME]*len(INDEX_VARS[1])
+
 	for potential_target in potential_targets:
 		if (potential_target not in INDEX_VARS[0]) and is_filename(targeted(potential_target)): 
 			if INDEX_VARS[2]==BLANK_TABLE:
@@ -406,9 +414,9 @@ def session(target_directory, parsed_args):
 				output_modified = BLANK_TIME
 		
 			if (output_modified_old == BLANK_TIME) or (time.strptime(output_modified_old) != output_modified) or (output_modified < input_modified):
-				print 'old',output_modified_old
-				print 'new',output_modified
-				print 'in',time.asctime(input_modified)
+				#print 'old',output_modified_old
+				#print 'new',output_modified
+				#print 'in',time.asctime(input_modified)
 				try:
 
 					#TODO HERE IS WHERE THE MEAT OF THE PROGRAM HAPPENS!
@@ -446,7 +454,7 @@ def try_to_parse_args(args):
 			parsed.append(arg)
 		else:
 			unparsed.append(arg)
-	return parsed, unparsed
+	return list(set(parsed)), list(set(unparsed))
 
 def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVAL/100.0):
 	start = time.time()
@@ -492,28 +500,28 @@ def leash_allows():
 def run(target_directory, args):
 	hard_check(is_directory(target_directory), "Invalid Directory: "+target_directory)
 	LOCK_DIRECTORY(target_directory)
-	try:
-		parsed_args, unparsed_args = try_to_parse_args(args) 
-		if len(parsed_args):
-			PRINT_ERR('Run understood: '+','.join(parsed_args))
-		if len(unparsed_args):
-			PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
-		#Catches args in config.EXTERNAL_SOURCES
-		
+	#try:
+	parsed_args, unparsed_args = try_to_parse_args(args) 
+	if len(parsed_args):
+		PRINT_ERR('Run understood: '+','.join(parsed_args))
+	if len(unparsed_args):
+		PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
+	#Catches args in config.EXTERNAL_SOURCES
+	
+	#TODO
+	#Does work, then goes idle, then repeats, until LEASH
+	#print "Entering main while loop"
+	while(leash_allows()):
 		#TODO
-		#Does work, then goes idle, then repeats, until LEASH
-		#print "Entering main while loop"
-		while(leash_allows()):
-			#TODO
-			#print 'Entering Session'
-			session(target_directory, parsed_args)
-			#TODO
-			#print 'Entering sleep timer()'
-			sleep_timer()
-			#TODO
+		#print 'Entering Session'
+		session(target_directory, parsed_args)
+		#TODO
+		#print 'Entering sleep timer()'
+		sleep_timer()
+		#TODO
 
-		#try:
-		#pass
+	try:
+		pass
 	except Exception as e:
 		#TODO
 		PRINT_ERR(e)
