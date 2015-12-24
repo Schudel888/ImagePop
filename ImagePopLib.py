@@ -398,10 +398,8 @@ def session(target_directory, parsed_args, unparsed_pargs):
 				try:
 
 					#TODO HERE IS WHERE THE MEAT OF THE PROGRAM HAPPENS!
-					print 'Session:', arg, filename
-					arg_match(arg)(filename, output_filename)
-
-
+					print 'Session:', arg, targeted(filename)
+					arg_match(arg)(targeted(filename), output_filename)
 
 
 
@@ -434,7 +432,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 	if not check(sleep_time > 0.0, 'sleep_timer must be given a positive number'):
 		sleep_time = config.WAIT_INTERVAL
 	end = start+sleep_time
-	end_message = 'Program will resume automatically after: '+time.asctime(end)
+	end_message = 'Program will resume automatically after: '+time.ctime(end)
 	print end_message
 
 	subinterval = float(subinterval)
@@ -460,7 +458,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 		if is_interrupted(subinterval/2.0) or time.time()>end:
 			break
 		else:
-			timer.sleep(subinterval/2.0)
+			time.sleep(subinterval/2.0)
 	print ''
 	return 
 
