@@ -282,7 +282,7 @@ def UNLOCK_DIRECTORY(target_directory):
 
 #<Begin: Runtime Main>
 
-INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME, config.LOCK, 'ImagePopInit.txt', 'ImagePopReadme.txt') #TODO
+INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME, config.LOCK, 'ImagePopInit.txt', 'ImagePopReadme.txt', 'ImagePopConfig.py') #TODO
 INDEX_VARS = [BLANK_TEXT, BLANK_TEXT, BLANK_TABLE]
 
 #RECURSION_DEPTH = 0
@@ -326,9 +326,10 @@ def properly_indexed(target_directory):
 		try:
 			possible_targets.remove(fn)
 		except Exception:
-			remake_all()
-			return properly_indexed(target_directory)
-	
+			#remake_all()
+			#return properly_indexed(target_directory)
+			pass #TODO
+
 	#RECURSION_DEPTH = 0
 	return possible_targets #THIS IS EVERYTHING, even directories and weird stuff
 
