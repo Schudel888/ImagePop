@@ -485,7 +485,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 		sleep_time = config.WAIT_INTERVAL
 	end = start+sleep_time
 	end_message = 'Program will resume automatically after: '+time.ctime(end)
-	print end_message
+	#print end_message
 
 	subinterval = float(subinterval)
 	if not check(sleep_time > subinterval > 0.0, 'sleep_timer subinterval must be small and positive'):
@@ -493,7 +493,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 
 	intervals = int(sleep_time/subinterval)
 
-	interrupt_message = 'Program idle: ' #TODO 'Press enter to interact...'
+	interrupt_message = end_message+'Program idle: ' #TODO 'Press enter to interact...'
 	interrupt_char_0 = '~\r'
 	interrupt_char_1 = '-\r'
 	def is_interrupted(within):
@@ -511,7 +511,7 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 			break
 		else:
 			time.sleep(subinterval/2.0)
-	print ''
+	#print '' #TODO
 	return 
 
 #TODO Make it so the program has an overall LEASH
@@ -522,33 +522,34 @@ def leash_allows():
 def run(target_directory, args):
 	hard_check(is_directory(target_directory), "Invalid Directory: "+target_directory)
 	LOCK_DIRECTORY(target_directory)
-	#try:
-	parsed_args, unparsed_args = try_to_parse_args(args) 
-	if len(parsed_args):
-		PRINT_ERR('Run understood: '+','.join(parsed_args))
-	if len(unparsed_args):
-		PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
-	#Catches args in config.EXTERNAL_SOURCES
-	
-	#TODO
-	#Does work, then goes idle, then repeats, until LEASH
-	#print "Entering main while loop"
-	while(leash_allows()):
-		#TODO
-		#print 'Entering Session'
-		session(target_directory, parsed_args)
-		#TODO
-		#print 'Entering sleep timer()'
-		sleep_timer()
-		#TODO
-
 	try:
-		pass
+		parsed_args, unparsed_args = try_to_parse_args(args) 
+		if len(parsed_args):
+			PRINT_ERR('Run understood: '+','.join(parsed_args))
+		if len(unparsed_args):
+			PRINT_ERR('Run did not understand: '+','.join(unparsed_args))
+		#Catches args in config.EXTERNAL_SOURCES
+		
+		#TODO
+		#Does work, then goes idle, then repeats, until LEASH
+		#print "Entering main while loop"
+		while(leash_allows()):
+			#TODO
+			#print 'Entering Session'
+			session(target_directory, parsed_args)
+			#TODO
+			#print 'Entering sleep timer()'
+			sleep_timer()
+			#TODO
+
+		#try:
+			#pass
 	except Exception as e:
 		#TODO
 		PRINT_ERR(e)
 	finally:
 		UNLOCK_DIRECTORY(target_directory)	
+		print 'ImagePopLib.py run() Finished!'
 		#TODO
 #<END: Runtime Main>
 
