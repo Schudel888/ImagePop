@@ -282,7 +282,7 @@ def UNLOCK_DIRECTORY(target_directory):
 
 #<Begin: Runtime Main>
 
-INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME, config.LOCK, 'ImagePopInit.txt') #TODO
+INDEX_FILES = (config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME, config.LOCK, 'ImagePopInit.txt', 'ImagePopReadme.txt') #TODO
 INDEX_VARS = [BLANK_TEXT, BLANK_TEXT, BLANK_TABLE]
 
 #RECURSION_DEPTH = 0
@@ -310,7 +310,7 @@ def properly_indexed(target_directory):
 	INDEX_VARS[1] = read_sealed_text(path1)
 	INDEX_VARS[2] = read_sealed_table(path2)
 	
-	if not (INDEX_VARS[2]==BLANK_TABLE and INDEX_VARS[1]==BLANK_TEXT and INDEX_VARS[0]==BLANK_TEXT):
+	if (INDEX_VARS[2]!=BLANK_TABLE or INDEX_VARS[1]!=BLANK_TEXT or INDEX_VARS[0]!=BLANK_TEXT):
 		len0 = len(INDEX_VARS[0])
 		len1 = len(INDEX_VARS[1])
 		size2 = len(INDEX_VARS[2])*len(INDEX_VARS[2][0]) #TODO DANGER
@@ -356,17 +356,35 @@ def session(target_directory, parsed_args):
 	#CHECKS FOR SAVED INDEX FILES AND RETURNS A LIST OF ONLY POTENTIAL TARGET FILES
 	assert is_directory(target_directory)
 	potential_targets = properly_indexed(target_directory) #This function is recursive!! DANGEROUS!!
+
+	index_of_cache = dict()
+	def index_of(str_filename, str_argname=None):
+		if str_argname is None:
+			if str_filename not in index_of_cache:
+				try:
+					index_of_cache[str_filename] = INDEX_VARS[0].index(str_filename)
+				except Exception:
+					index_of_cache[str_filename] = None
+			return index_of_cache[str_filename]
+		else:
+			if (str_filename, str_argname) not in index_of_cache:
+				try:
+					index_of_cache[(str_filename, str_argname)] = INDEX_VARS[0].index(str_filename), 1+INDEX_VARS[1].index(str_argname)
+				except Exception:
+					index_of_cache[(str_filename, str_argname)] = None
+			return index_of_cache[(str_filename, str_argname)]
 	
 	#TODO
-	INDEX_VARS[1] = parsed_args
-	old_parsed_args = read_sealed_text(targeted(INDEX_FILES[1]))
-	if old_parsed_args != INDEX_VARS[1]:
-		for row in INDEX_VARS[2]:
-			#TODO~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~ ~ ~ ~  ~ ~  ~~~  ~~ ~  ~
-			pass
+	#INDEX_VARS[1] ?= parsed_args #WRONG
+	#old_parsed_args = read_sealed_text(targeted(INDEX_FILES[1]))
+	for new_column_name in list(set(parsed_args) - set(INDEX_VARS[1])):
+		INDEX_VARS[1].append(new_column_name)
+		if INDEX_VARS[2] != BLANK_TABLE:
+			for row in INDEX_VARS[2]:
+				#TODO~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~ ~ ~ ~  ~ ~  ~~~  ~~ ~  ~
+				row.append(BLANK_TIME)
 
-	
-	for arg in INDEX_VARS[1]:
+	for arg in parsed_args:
 		output_directory = targeted(arg)
 		if not is_directory(output_directory):
 			try:
@@ -389,7 +407,8 @@ def session(target_directory, parsed_args):
 			INDEX_VARS[2].append(new_row)
 
 	#print 'Session: entering rownum'
-	for rownum,filename in enumerate(INDEX_VARS[0]):
+	#for rownum,filename in enumerate(INDEX_VARS[0]):
+	for filename in INDEX_VARS[0]:
 
 		if not is_filename(targeted(filename)):
 			#This means the input is gone	
@@ -399,13 +418,15 @@ def session(target_directory, parsed_args):
 		#print 'Session: entering input_modified'
 		#First check the input timestamp. If it's been modified, invalidate all others	
 		input_modified = time.strptime(time.ctime( os.stat(targeted(filename)).st_mtime ))
-		if input_modified > time.strptime( INDEX_VARS[2][rownum][0] ):
-			INDEX_VARS[2][rownum] = [time.asctime(input_modified)]
-			INDEX_VARS[2][rownum].extend(BLANK_TIME_ROW)
+		if input_modified > time.strptime( INDEX_VARS[2][index_of(filename)][0] ):
+			INDEX_VARS[2][index_of(filename)] = [time.asctime(input_modified)]
+			INDEX_VARS[2][index_of(filename)].extend(BLANK_TIME_ROW)
 
 		#Now check all output timestamps; if they are newer than the input or blank, queue them
-		for (argnum,arg) in enumerate(INDEX_VARS[1]):
-			output_modified_old = INDEX_VARS[2][rownum][1+argnum]
+		#for (argnum,arg) in enumerate(INDEX_VARS[1]):
+		for arg in parsed_args:
+			index = index_of(filename, arg)
+			output_modified_old = INDEX_VARS[2][index[0]][index[1]] #INDEX_VARS[2][rownum][1+argnum]
 
 			output_filename = os.path.join(target_directory, arg, filename)
 			if is_filename(output_filename):
@@ -424,7 +445,8 @@ def session(target_directory, parsed_args):
 					arg_match(arg)(targeted(filename), output_filename)   #TODO-___________________________________________
 
 
-					INDEX_VARS[2][rownum][1+argnum]=time.ctime( os.stat(output_filename).st_mtime )
+					#INDEX_VARS[2][rownum][1+argnum]=time.ctime( os.stat(output_filename).st_mtime )
+					INDEX_VARS[2][index[0]][index[1]] =time.ctime( os.stat(output_filename).st_mtime )
 
 					print 'Session:', arg, targeted(filename)
 
