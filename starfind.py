@@ -51,7 +51,7 @@ def pipeline(arr, dnorm=True, snorm=True, sigma=1, mode='mult'):
 	if dnorm: 
 		D=d_norm
 	else:
-		D=d
+		D=arr
 
 	if snorm:
 		S=s_norm
@@ -94,9 +94,9 @@ def max_selector(norm_image, res=4, MAX=100):
 		norm_image[y-res:y+res+1,x-res:x+res+1][cutout]=waterline
 	return point_list
 
-def list_to_table(list_of_tuples, col_dtypes, col_names):
+def list_to_table(list_of_tuples, col_dtypes):
 	#TODO
-	columns = np.recarray(shape=(len(col_dtypes),len(list_of_tuples)), dtype=col_dtypes, names=col_names)
+	columns = np.rec.array(list_of_tuples, dtype=col_dtypes)
 
 	return fits.TableHDU.from_columns(columns, header=None) #TODO ~~~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~
 
@@ -105,7 +105,7 @@ def starfind(input_filename, output_filename):
 
 	def REAL_DEAL(image):	
 		primary = np.copy(image)	
-		processed_image = pipeline(primary)
+		processed_image = pipeline(primary, dnorm=True, snorm=True, sigma=1, mode='gauss')
 		
 		primary[processed_image<=0.1].fill(0.0) #TODO Fudge
 		master = image*processed_image
@@ -120,9 +120,10 @@ def starfind(input_filename, output_filename):
 					
 		output_hdulist = REAL_DEAL(input_data)
 		#TODO ~~ ~ ~ ~ ~ ~~  ~~ ~~  ~ ~~ ~~  ~  ~  ~ ~ ~ ~ ~ ~  ~~ ~ ~ ~ ~~  ~ ~  ~~  ~~ ~ ~ ~  ~ ~ ~~  ~~ ~ ~ ~~ ~  ~ ~~ ~  ~
+		output_hdulist.append( list_to_table( max_selector( norm(input_data), res=4, MAX=100), [('x', 'i4'),('y', 'i4')]))
+
 		output_hdulist.writeto(output_filename, clobber=True)
 
-		
 		input_hdulist.close()
 		output_hdulist.close()
 	

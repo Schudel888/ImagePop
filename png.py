@@ -13,13 +13,19 @@ def fits_to_png(name_of_fits_file, name_of_png_file):
 
 	assert data.ndim == 2
 
+	ACTUAL_PNG_FILENAME = name_of_png_file+'.png'
+
 
 	pl.imshow(data, cmap = matplotlib.cm.Greys_r)
 	#pl.grid(True)
-	pl.savefig(name_of_png_file, format='png')
+	pl.savefig(ACTUAL_PNG_FILENAME, format='png')
  	pl.close()
 
  	hdulist.close()
+
+ 	with open(name_of_png_file, 'w') as placeholder:
+ 		placeholder.write(ACTUAL_PNG_FILENAME)
+
 	return #DONE Return Nothing
 
 
