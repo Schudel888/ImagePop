@@ -13,7 +13,7 @@ import csv
 def PRINT_ERR(x=None):
 	if x is None:
 		x = 'Generic'
-	sys.stderr.write('\nError: '+repr(x)+'\n')
+	sys.stderr.write('\nWarning: '+repr(x)+'\n')
 	return x
 
 def hard_check(boolean, extra=None):
@@ -498,13 +498,13 @@ def sleep_timer(sleep_time=config.WAIT_INTERVAL, subinterval=config.WAIT_INTERVA
 	interrupt_char_0 = '~\r'
 	interrupt_char_1 = '-\r'
 	def is_interrupted(within):
-		sys.stdout.write(interrupt_message+interrupt_char_0)
-		sys.stdout.flush()
+		#sys.stdout.write(interrupt_message+interrupt_char_0)
+		#sys.stdout.flush()
 		#TODO interactive
 		assert float(within)>0.0
 		time.sleep(float(within))
-		sys.stdout.write(interrupt_message+interrupt_char_1)
-		sys.stdout.flush()
+		#sys.stdout.write(interrupt_message+interrupt_char_1)
+		#sys.stdout.flush()
 	
 	#flicker messsage using projected wake time
 	for i in range(intervals):
