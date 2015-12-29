@@ -98,7 +98,7 @@ def list_to_table(list_of_tuples, col_dtypes, col_names):
 	#TODO
 	columns = np.recarray(shape=(len(col_dtypes),len(list_of_tuples)), dtype=col_dtypes, names=col_names)
 
-	return fits.TableHDU.from_columns(columns, header=None)
+	return fits.TableHDU.from_columns(columns, header=None) #TODO ~~~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~
 
 #Begin<Starfind>
 def starfind(input_filename, output_filename):
@@ -114,7 +114,7 @@ def starfind(input_filename, output_filename):
 	with warnings.catch_warnings():
 		warnings.simplefilter("ignore")	
 
-		input_hdulist = fits.open(input_filename, mode='readonly', memmap=True)
+		input_hdulist = fits.open(input_filename, mode='readonly')#, memmap=True)
 		input_hdu = input_hdulist[0]
 		input_data = input_hdu.data
 					

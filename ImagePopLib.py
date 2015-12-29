@@ -65,7 +65,7 @@ FILE_LIST_NAME = 'ImagePopIndex.txt'
 OPERATION_LIST_NAME = 'ImagePopOperations.txt'
 HISTORY_TABLE_NAME = 'ImagePopHistory.csv'
 
-EXTERNAL_SOURCES = 'png.py' #None #myImagePopLib.py;lib2.py;etc.py 
+EXTERNAL_SOURCES = 'png.py;starfind.py' #None #myImagePopLib.py;lib2.py;etc.py 
 #Must Each Expose Dict Called: Functions, or be None
 
 WAIT_INTERVAL = 10 #seconds #Int Only!
@@ -114,7 +114,7 @@ try:
 		else:
 			#temp = config.EXTERNAL_SOURCES
 			#config.EXTERNAL_SOURCES = []
-			for temp_cfg in temp.split(';'):
+			for temp_cfg in config.EXTERNAL_SOURCES.split(';'):
 				#import temp_cfg.rstrip('.py') as cfg
 				name = temp_cfg.rstrip('.py')
 				cfg=imp.load_module(name, *imp.find_module(name))#TODO close file??????????

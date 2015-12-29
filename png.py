@@ -7,7 +7,7 @@ import matplotlib.pyplot as pl
 def fits_to_png(name_of_fits_file, name_of_png_file):
 
 
-	hdulist = fits.open(name_of_fits_file, mode='readonly', memmap=True)
+	hdulist = fits.open(name_of_fits_file, mode='readonly')#, memmap=True)
 	hdu = hdulist[0]
 	data = hdu.data
 
@@ -19,7 +19,7 @@ def fits_to_png(name_of_fits_file, name_of_png_file):
 	pl.savefig(name_of_png_file, format='png')
  	pl.close()
 
-
+ 	hdulist.close()
 	return #DONE Return Nothing
 
 
