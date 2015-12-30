@@ -40,6 +40,7 @@ Sol & Lowell
 #<BEGIN: Imports>
 import sys
 import os
+import collections
 #<END: Imports>
 
 
@@ -115,8 +116,9 @@ def our_run(target, x=DEFAULT_RUN_ARGS):
 		#TODO ask user about this?
 		our_init(target)
 
-	lib.run(target, x)
-	#Should keep running until halting conditions are met
+	if len(x): #TODO Prevents empty calls to lib.run
+		lib.run(target, x)
+		#Should keep running until halting conditions are met
 
 #<END: Run>
 
@@ -128,15 +130,10 @@ def our_run(target, x=DEFAULT_RUN_ARGS):
 
 #<BEGIN: Main>
 
-modes = dict()
+#modes = dict()
+modes = collections.defaultdict(lambda whatever: help_display)
 modes['init'] = our_init
 modes['run'] = our_run	
-modes['h'] = help_display
-modes['-h'] = help_display
-modes['--h'] = help_display
-modes['help'] = help_display
-modes['-help'] = help_display
-modes['--help'] = help_display
 
 check(sys.argv[1] in modes)
 our_args = sys.argv[2:]	
@@ -172,6 +169,7 @@ def designate_target(x):
 			old_target = target
 			try:
 				target = x.pop()
+				y.append(old_target)
 			except Exception:
 				target = old_target
 		else:
@@ -185,7 +183,11 @@ def designate_target(x):
 		return gotcwd, x
 	
 #TODO->Better handle empty our_args
-modes[sys.argv[1]](*designate_target(our_args))
+MODE = modes[sys.argv[1]]
+if MODE != help_display:
+	MODE(*designate_target(our_args))
+else:
+	MODE()
 #modes[sys.argv[1]](None)
 #<END: Main>
 

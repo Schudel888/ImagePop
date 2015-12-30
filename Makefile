@@ -1,5 +1,6 @@
 
 clean: 
-	rm *.pyc ImagePopReadme.txt ImagePopInit.txt ImagePopConfig.py
+	rm *.pyc ImagePopReadme.txt ImagePopInit.txt ImagePopConfig.py ImagePopLog.txt
+
 
 

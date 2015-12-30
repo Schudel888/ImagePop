@@ -10,11 +10,13 @@ import csv
 
 
 #<BEGIN: Error Handling>
-def PRINT_ERR(x=None):
-	if x is None:
-		x = 'Generic'
-	sys.stderr.write('\nWarning: '+repr(x)+'\n')
-	return x
+def log_to(stream, prefix='Message:'):
+	def log_to_stream(x=None):
+		if x is None:
+			x = 'Generic'
+		stream.write('\n'+prefix+' '+repr(x)+'\n')
+	return log_to_stream
+PRINT_ERR = log_to(sys.stderr)
 
 def hard_check(boolean, extra=None):
 	assert boolean, PRINT_ERR(extra) #Harsh
@@ -74,7 +76,7 @@ WAIT_INTERVAL = 10 #seconds #Int Only!
 LEASH_LENGTH = 10*60*1 #seconds #Int Only!
 #Total amount of time the program is allowed to run before exiting
 
-STD_ERR = None #myImagePopErr.txt
+STD_ERR = 'ImagePopLog.txt' #myImagePopErr.txt
 #Allows superusers to rerout messages to log files
 
 CLOBBER = True #False
@@ -96,6 +98,15 @@ except Exception:
 		config_file.flush()
 	import ImagePopConfig as config
 PRINT_ERR('ImagePopConfig.py imported successfully!')
+
+if is_str(config.STD_ERR):
+	if not is_filename(config.STD_ERR):
+		#TODO Should the file not automatically be created??
+		pass
+	PRINT_ERR('Config: Further messages will be appended to '+config.STD_ERR)
+	PRINT_ERR = log_to(open(config.STD_ERR, 'a')) #TODO
+else:
+	config.STD_ERR = sys.stderr
 
 for x in [config.LOCK, config.SEAL, config.FILE_LIST_NAME, config.OPERATION_LIST_NAME, config.HISTORY_TABLE_NAME]: 
 	hard_check(is_str(x), 'Config: Must be string')
@@ -129,7 +140,6 @@ if not check(isinstance(config.WAIT_INTERVAL, int) and (config.WAIT_INTERVAL > 1
 	config.WAIT_INTERVAL = 10
 if not check(isinstance(config.LEASH_LENGTH, int) and (24*60*60 > config.LEASH_LENGTH > 1*1*60), 'Config: Leash set within 24h max and 60s min'):
 	config.LEASH_LENGTH = 10*60
-hard_check(config.STD_ERR is None or is_filename(config.STD_ERR), 'Config: Invalid Error Log File') #TODO
 if not check(isinstance(config.CLOBBER, bool), 'Config: Clobber must be a boolean'):
 	config.CLOBBER = False
 hard_check(config.ROBOT_FRIENDLY, 'Config: Not Robot Friendly')
