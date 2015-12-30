@@ -1,0 +1,106 @@
+#!/bin/bash
+
+#Mock Data Sender Program for Observational Astronomy Final Assignment, Fall 2015, Columbia University
+#NYC, NY.  Sol Courtney (swc2124) swc2124@columbia.edu
+
+Directories=(
+OSMOS_N123_2p4 
+OSMOS_N1_2p4-transitData 
+OSMOS_N1_2p4_solsOrion 
+)
+
+echo " "
+echo " "
+echo -ne "------->|[WELCOME!]|<--------"\\r
+sleep 3
+
+echo "  MockDataSender-2000 [V 1.0]"
+echo "  by: Sol Courtney"      
+echo " (No Rights Reserved, NYC, 2015)"
+echo " "
+sleep 3
+
+echo " "
+sleep 1
+echo " "
+sleep 1
+
+
+echo -ne "  Preparing fake science.								"\\r
+sleep .75
+echo -ne "  Preparing fake science..							"\\r
+sleep .75
+echo -ne "  Preparing fake science...							"\\r
+sleep .75
+echo -ne "  Preparing fake science.... Please be patient"\\r
+sleep 1.5
+echo -ne "  Fake science is READY!                               "\\r
+sleep 1.5
+echo "|[STARTING SIMULATED DATA SAVE SESSION NOW]|                                       "
+echo " "
+sleep 3
+
+for directory in "${Directories[@]}"; do
+
+	echo -ne "		|[--------]| 4 		"\\r
+	sleep 2	
+	echo -ne "	      ->|[********]|<- 		"\\r
+	sleep 1
+	echo -ne "		|[STARTING]| 3 		"\\r
+	sleep .75
+	echo -ne "	      ->|[********]|<- 		"\\r
+	sleep .75
+	echo -ne "		|[STARTING]| 2 		"\\r
+	sleep .75
+	echo -ne "	      ->|[********]|<- 		"\\r
+	sleep .75
+	echo -ne "		|[STARTING]| 1 		"\\r
+	sleep 1
+	echo -ne "	      ->|[********]|<- 		"\\r
+	sleep 2
+	echo -ne "		|[STARTED]|    		"\\r
+	sleep 2
+	echo "		|[STARTED]|    		"
+
+	echo "		|[SENDING 1 FILE FROM "$directory" EVERY 3 SECONDS]|"
+	echo " "
+	sleep 2
+
+	for file in ~/ImPopTest/MockData/$directory/*; do
+
+		echo -ne "			 ->[SENDING] ......... "$file" "\\r
+		sleep .75
+		echo -ne "			 --->[SENDING] ....... "$file" "\\r
+		sleep .75
+		echo -ne "			 ----->[SENDING] ..... "$file" "\\r
+		sleep .75
+		echo -ne "			 ------->[SENDING] ... "$file" "\\r
+		sleep .75
+		echo -ne "			 --------->[SENDING] . "$file" "\\r
+		sleep 1
+
+		cp $file ~/ImPopTest/ImPopTestTarget
+
+		echo "			|[SENT]| ... "$file"                  "
+		sleep .1
+
+		done
+
+	echo " "
+	echo -ne "		--->|[DATA FROM "$directory" SENT SUCCESSFULLY]|<---"\\r
+	sleep 2
+	echo "		    |[DATA FROM "$directory" SENT SUCCESSFULLY]|      "
+	sleep 1
+	echo -ne "		-->|[GOOD JOB!]|<---"\\r
+	sleep .75
+	echo "		|[PROCESS COMPLETED]|		"
+	echo " "
+	sleep 2
+
+	done
+
+echo " "
+echo "-->|[All Done]|"
+sleep 2
+
+echo "Good Bye!"
